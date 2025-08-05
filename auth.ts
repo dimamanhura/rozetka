@@ -50,9 +50,11 @@ export const config: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async session({ session, user, trigger, token }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async session({ session, user, trigger, token }: any) {
       if (token.sub) {
         session.user.id = token.sub;
+        session.user.role = token.role;
       }
 
       if (trigger === 'update') {
@@ -60,6 +62,13 @@ export const config: NextAuthConfig = {
       }
 
       return session;
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async jwt({ token, user, trigger, session }: any) {
+      if (user) {
+        token.role = user.role;
+      }
+      return token
     },
   }
 };
