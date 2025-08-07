@@ -29,7 +29,7 @@ model Product {
   isFeatured  Boolean     @default(false)
   banner      String?
   createdAt   DateTime    @default(now()) @db.Timestamp(6)
-  OrderItem   OrderItem[]
+  orderItems  OrderItem[]
 }
 
 model User {
@@ -47,7 +47,7 @@ model User {
   account       Account[]
   session       Session[]
   cart          Cart[]
-  order         Order[]
+  orders        Order[]
 }
 
 model Account {
@@ -115,7 +115,7 @@ model Order {
   isDelivered     Boolean     @default(false)
   deliveredAt     DateTime?   @db.Timestamp(6)
   createdAt       DateTime    @default(now()) @db.Timestamp(6)
-  orderItem       OrderItem[]
+  orderItems      OrderItem[]
 }
 
 model OrderItem {

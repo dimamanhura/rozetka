@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: 'Select Payment Method',
 };
 
-
 const PaymentMethodPage = async () => {
   const session = await auth();
 
