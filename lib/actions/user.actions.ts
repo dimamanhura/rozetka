@@ -1,12 +1,13 @@
 'use server';
 
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
-import { shippingAddressSchema, signInFormSchema, signUpFormSchema } from '../validators';
+import { paymentMethodSchema, shippingAddressSchema, signInFormSchema, signUpFormSchema } from '../validators';
 import { auth, signIn, signOut } from '@/auth';
 import { hashSync }from 'bcrypt-ts-edge';
 import { prisma } from '@/db/prisma';
 import { formatErrors } from '../utils';
 import { ShippingAddress } from '@/types';
+import z from 'zod';
 
 export async function signInWithCredentials(prevState: unknown, formData: FormData) {
   try {
@@ -81,6 +82,28 @@ export async function updateUserAddress(data: ShippingAddress) {
 
     await prisma.user.update({
       data: { address },
+      where: { id: currentUser.id },
+    });
+
+    return { success: true, message: 'User updated successfully' };
+  } catch (err) {
+    return { success: false, message: formatErrors(err) };
+  }
+};
+
+export async function updateUserPaymentMethod(data: z.infer<typeof paymentMethodSchema>) {
+  try {
+    const session = await auth();
+    const currentUser = await prisma.user.findFirst({ where: { id: session?.user?.id } });
+
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
+
+    const paymentMethod = paymentMethodSchema.parse(data);
+
+    await prisma.user.update({
+      data: { paymentMethod: paymentMethod.type },
       where: { id: currentUser.id },
     });
 
