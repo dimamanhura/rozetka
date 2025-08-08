@@ -112,3 +112,23 @@ export async function updateUserPaymentMethod(data: z.infer<typeof paymentMethod
     return { success: false, message: formatErrors(err) };
   }
 };
+
+export async function updateProfile(user: { name: string; email: string }) {
+  try {
+    const session = await auth();
+    const currentUser = await prisma.user.findFirst({ where: { id: session?.user?.id } });
+
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
+
+    await prisma.user.update({
+      data: { name: user.name },
+      where: { id: currentUser.id },
+    });
+
+    return { success: true, message: 'User updated successfully' };
+  } catch (err) {
+    return { success: false, message: formatErrors(err) };
+  }
+}
