@@ -7,6 +7,10 @@ import { getMyCart } from "./cart.actions";
 import { getUserById } from "./user.actions";
 import { insertOrderSchema } from "../validators";
 import { prisma } from "@/db/prisma";
+import { revalidatePath } from "next/cache";
+import { paypal } from "../paypal";
+import { PaymentResult } from "@/types";
+import { PAGE_SIZE } from "../constants";
 
 export async function createOrder() {
   try {
@@ -117,4 +121,163 @@ export async function getOrderById(orderId: string) {
     },
   });
   return convertToPlainObject(order);
+};
+
+export async function createPayPalOrder(orderId: string) {
+  try {
+    const order = await prisma.order.findFirst({ where: { id: orderId } });
+
+    if (order) {
+      const paypalOrder = await paypal.createOrder(Number(order.totalPrice));
+
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentResult: {
+            id: paypalOrder.id,
+            email_address: '',
+            status: '',
+            pricePaid: 0,
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Item order created successfully',
+        data: paypalOrder.id,
+      };
+    } else {
+      throw new Error('Order not found');
+    }
+  } catch (err) {
+    return {
+      success: false,
+      message: formatErrors(err),
+    };
+  }
+};
+
+export async function approvePayPalOrder(orderId: string, data: { orderID: string }) {
+  try {
+    const order = await prisma.order.findFirst({ where: { id: orderId } });
+
+    if (!order) throw new Error('Order not found');
+
+    const captureDate = await paypal.capturePayment(data.orderID);
+
+    if (!captureDate || captureDate.id !== (order.paymentResult as PaymentResult)?.id || captureDate.status !== 'COMPLETED') {
+      throw new Error('Error in PayPal payment');
+    }
+
+    await updateOrderToPaid({
+      orderId,
+      paymentResult: {
+        id: captureDate.id,
+        status: captureDate.status,
+        email_address: captureDate.payer.email_address,
+        pricePaid: captureDate.purchase_units[0]?.payments?.captures[0]?.amount?.value,
+      },
+    });
+
+    revalidatePath(`/order/${order.id}`);
+
+    return {
+      success: true,
+      message: 'Your order has been paid',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: formatErrors(err),
+    };
+  }
+};
+
+async function updateOrderToPaid({
+  orderId,
+  paymentResult,
+}: {
+  orderId: string;
+  paymentResult?: PaymentResult;
+}) {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId },
+    include: {
+      orderItems: true,
+    },
+  });
+
+  if (!order) throw new Error('Order not found');
+
+  if (order.isPaid) throw new Error('Order is already paid');
+
+  await prisma.$transaction(async (trx) => {
+    for (const item of order.orderItems) {
+      await trx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: -item.qty } },
+      });
+    }
+
+    await trx.order.update({
+      where: { id: order.id },
+      data: { 
+        isPaid: true,
+        paidAt: new Date(),
+        paymentResult,
+      },
+    });
+  });
+
+  const updatedOrder = await prisma.order.findFirst({
+    where: { id: orderId },
+    include: {
+      orderItems: true,
+      user: {
+        select: {
+          email: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!updatedOrder) throw new Error('Order not found'); 
+
+  return updatedOrder;
+};
+
+export async function getMyOrders({
+  limit = PAGE_SIZE,
+  page = 1,
+}: {
+  limit?: number;
+  page?: number; 
+}) {
+  const session = await auth();
+
+  if (!session) throw new Error('User is not authorized')
+
+  const data = await prisma.order.findMany({
+    where: {
+      userId: session?.user?.id,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: limit,
+    skip: (page - 1) * limit,
+  });
+
+  const dataCount = await prisma.order.count({
+    where: {
+      userId: session?.user?.id,
+    },
+  });
+
+  return {
+    totalPages: Math.ceil(dataCount / limit),
+    data,
+  };
 };
