@@ -97,7 +97,7 @@ const AdminOverviewPage = async () => {
                 { summary.latestSales.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell>{order.user.name || 'DELETED USER'}</TableCell>
-                    <TableCell>{order.createdAt.toISOString()}</TableCell>
+                    <TableCell>{order.createdAt.toString()}</TableCell>
                     <TableCell>${order.totalPrice.toString()}</TableCell>
                     <TableCell>
                       <Link href={`/order/${order.id}`}>

@@ -332,3 +332,101 @@ export async function getOrderSummary() {
     salesData,
   };
 };
+
+export async function getAllOrders({
+  limit = PAGE_SIZE,
+  page = 1,
+}: {
+  limit?: number;
+  page?: number; 
+}) {
+  const data = await prisma.order.findMany({
+    orderBy: {
+      createdAt: 'desc',
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+        },
+      },
+    },
+    take: limit,
+    skip: (page - 1) * limit,
+  });
+
+  const dataCount = await prisma.order.count({});
+
+  return {
+    totalPages: Math.ceil(dataCount / limit),
+    data,
+  };
+};
+
+export async function deleteOrder(id: string) {
+  try {
+    await prisma.order.delete({ where: { id } });
+    revalidatePath('/admin/orders');
+    return {
+      success: true,
+      message: 'Order deleted successfully',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: formatErrors(err),
+    };
+  }
+};
+
+export async function updateOrderToPaidCOD(orderId: string) {
+  try {
+    await updateOrderToPaid({ orderId });
+    revalidatePath(`/order/${orderId}`);
+    return {
+      success: true,
+      message: 'Order marked as paid',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: formatErrors(err),
+    };
+  }
+};
+
+export async function deliverOrder(orderId: string) {
+  try {
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+      }
+    });
+
+    if (!order) throw new Error('Order not found');
+
+    if (!order.isPaid) throw new Error('Order is not paid');
+
+    await prisma.order.update({
+      where: {
+        id: orderId,
+      },
+      data: {
+        isDelivered: true,
+        deliveredAt: new Date(),
+      },
+    });
+
+    revalidatePath(`/order/${orderId}`);
+
+    return {
+      success: true,
+      message: 'Order has been marked delivered',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: formatErrors(err),
+    };
+  }
+};

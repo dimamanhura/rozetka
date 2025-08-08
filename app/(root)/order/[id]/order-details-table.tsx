@@ -2,37 +2,55 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  TableHeader,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Table,
+} from "@/components/ui/table";
 import { Order } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  usePayPalScriptReducer,
   PayPalScriptProvider,
   PayPalButtons,
-  usePayPalScriptReducer,
 } from '@paypal/react-paypal-js';
-import { createPayPalOrder, approvePayPalOrder } from "@/lib/actions/order.actions";
+import { Button } from "@/components/ui/button";
+import { useTransition } from "react";
+import {
+  updateOrderToPaidCOD,
+  approvePayPalOrder,
+  createPayPalOrder,
+  deliverOrder,
+} from "@/lib/actions/order.actions";
 import { toast } from "sonner";
+
+interface OrderDetailsTableProps {
+  paypalClientId: string;
+  isAdmin?: boolean;
+  order: Order;
+}
 
 const OrderDetailsTable = ({
   paypalClientId,
+  isAdmin,
   order,
-}: {
-  paypalClientId: string,
-  order: Order,
-}) => {
+}: OrderDetailsTableProps) => {
   const {
     shippingAddress,
-    itemsPrice,
-    shippingPrice,
-    taxPrice,
-    totalPrice,
-    orderItems,
     paymentMethod,
-    isPaid,
-    paidAt,
+    shippingPrice,
     isDelivered,
     deliveredAt,
+    itemsPrice,
+    totalPrice,
+    orderItems,
+    taxPrice,
+    isPaid,
+    paidAt,
     id,
   } = order;
 
@@ -71,6 +89,48 @@ const OrderDetailsTable = ({
     }
   };
 
+  const MarkAsPaidButton = () => {
+    const [isPending, startTransition] = useTransition();
+
+    return (
+      <Button
+        type="button"
+        disabled={isPending}
+        onClick={() => startTransition(async () => {
+          const { success, message } = await updateOrderToPaidCOD(order.id);
+          if (success) {
+            toast.success(message);
+          } else {
+            toast.error(message);
+          }
+        })}
+      >
+        {isPending ? 'Processing...' : 'Mark As Paid'}
+      </Button>
+    );
+  }; 
+
+  const MarkAsDeliveredButton = () => {
+    const [isPending, startTransition] = useTransition();
+
+    return (
+      <Button
+        type="button"
+        disabled={isPending}
+        onClick={() => startTransition(async () => {
+          const { success, message } = await deliverOrder(order.id);
+          if (success) {
+            toast.success(message);
+          } else {
+            toast.error(message);
+          }
+        })}
+      >
+        {isPending ? 'Processing...' : 'Mark As Delivered'}
+      </Button>
+    );
+  }; 
+
   return (
     <>
       <h1 className="py-4 text-2xl">
@@ -82,9 +142,9 @@ const OrderDetailsTable = ({
             <CardContent className="gap-4">
               <h2 className="text-xl pb-4">Payment Method</h2>
               <p>{paymentMethod}</p>
-              {isPaid ? (
+              {isPaid && paidAt ? (
                 <Badge variant={'secondary'} className="mt-2">
-                  Paid at {paidAt?.toISOString()}
+                  Paid at {paidAt?.toString()}
                 </Badge>
               ) : (
                 <Badge variant={'destructive'} className="mt-2">
@@ -102,7 +162,7 @@ const OrderDetailsTable = ({
               <p>{shippingAddress.postalCode}, {shippingAddress.country}</p>
               {isDelivered ? (
                 <Badge variant={'secondary'} className="mt-2">
-                  Delivered at {deliveredAt?.toISOString()}
+                  Delivered at {deliveredAt?.toString()}
                 </Badge>
               ) : (
                 <Badge variant={'destructive'} className="mt-2">
@@ -170,22 +230,31 @@ const OrderDetailsTable = ({
                 <div>Total</div>
                 <div>${totalPrice}</div>
               </div>
+
+              {/* PayPal Payment  */}
+              {!isPaid && paymentMethod === 'PayPal' && (
+                <PayPalScriptProvider options={{ clientId: paypalClientId }}>
+                  <PrintLoadingState />
+                  <PayPalButtons
+                    createOrder={handleCretePayPalOrder}
+                    onApprove={handleApprovePayPalOrder}
+                  />
+                </PayPalScriptProvider>
+              )}
+
+              {/* Cash On Delivery  */}
+              {isAdmin && !isPaid && paymentMethod === 'CashOnDelivery' && (
+                <MarkAsPaidButton />
+              )}
+              {isAdmin && isPaid && !isDelivered && (
+                <MarkAsDeliveredButton />
+              )}
             </CardContent>
-            {/* PayPal Payment  */}
-            {!isPaid && paymentMethod === 'PayPal' && (
-              <PayPalScriptProvider options={{ clientId: paypalClientId }}>
-                <PrintLoadingState />
-                <PayPalButtons
-                  createOrder={handleCretePayPalOrder}
-                  onApprove={handleApprovePayPalOrder}
-                />
-              </PayPalScriptProvider>
-            )}
           </Card>
         </div>
       </div>
     </>
   );
-}
- 
+};
+
 export default OrderDetailsTable;
