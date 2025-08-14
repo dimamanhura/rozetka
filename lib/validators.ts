@@ -1,4 +1,4 @@
-import { email, z } from 'zod';
+import { z } from 'zod';
 import { formatNumberWithDecimal } from './utils';
 import { PAYMENT_METHODS } from './constants';
 
@@ -26,8 +26,8 @@ export const insertProductSchema = z.object({
     .string()
     .min(3, 'Brand must be at least 3 characters'),
   stock: z
-    .coerce
-    .number(),
+    .number()
+    .nonnegative(),
   images: z
     .array(z.string())
     .min(1, 'Product must have at least 1 image'),
@@ -37,6 +37,10 @@ export const insertProductSchema = z.object({
     .string()
     .nullable(),
   price: currency,
+});
+
+export const updateProductSchema = insertProductSchema.extend({
+  id: z.string().min(1, 'Id is required'),
 });
 
 export const signInFormSchema = z.object({

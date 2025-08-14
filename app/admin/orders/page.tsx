@@ -22,7 +22,7 @@ const AdminOrdersPage = async ({ searchParams }: AdminOrdersPageProps) => {
 
   const orders = await getAllOrders({
     page: Number(page) || 1,
-    limit: 2,
+    limit: 10,
   });
 
   return (
