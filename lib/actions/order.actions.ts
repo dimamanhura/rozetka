@@ -10,7 +10,7 @@ import { insertOrderSchema } from "../validators";
 import { prisma } from "@/db/prisma";
 import { revalidatePath } from "next/cache";
 import { paypal } from "../paypal";
-import { PaymentResult } from "@/types";
+import { Order, PaymentResult } from "@/types";
 import { PAGE_SIZE } from "../constants";
 
 export async function createOrder() {
@@ -335,15 +335,29 @@ export async function getOrderSummary() {
 
 export async function getAllOrders({
   limit = PAGE_SIZE,
+  query,
   page = 1,
 }: {
   limit?: number;
-  page?: number; 
+  query?: string; 
+  page?: number;
 }) {
+  const queryFilter: Prisma.OrderWhereInput = query && query !== 'all'
+    ? ({
+        user: {
+          name: {
+            contains: query,
+            mode: 'insensitive',
+          }
+        }
+      })
+    : {};
+
   const data = await prisma.order.findMany({
     orderBy: {
       createdAt: 'desc',
     },
+    where: queryFilter,
     include: {
       user: {
         select: {
@@ -355,7 +369,9 @@ export async function getAllOrders({
     skip: (page - 1) * limit,
   });
 
-  const dataCount = await prisma.order.count({});
+  const dataCount = await prisma.order.count({
+    where: queryFilter,
+  });
 
   return {
     totalPages: Math.ceil(dataCount / limit),
