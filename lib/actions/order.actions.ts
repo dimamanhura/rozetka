@@ -10,8 +10,9 @@ import { insertOrderSchema } from "../validators";
 import { prisma } from "@/db/prisma";
 import { revalidatePath } from "next/cache";
 import { paypal } from "../paypal";
-import { Order, PaymentResult } from "@/types";
+import { Order, PaymentResult, ShippingAddress } from "@/types";
 import { PAGE_SIZE } from "../constants";
+import { sendPurchasedReceipt } from "@/email";
 
 export async function createOrder() {
   try {
@@ -245,6 +246,10 @@ export async function updateOrderToPaid({
   });
 
   if (!updatedOrder) throw new Error('Order not found'); 
+
+  await sendPurchasedReceipt({
+    order: updatedOrder as never as Order,
+  });
 
   return updatedOrder;
 };
