@@ -6,6 +6,9 @@ import { notFound } from "next/navigation";
 import ProductImages from "@/components/shared/product/product-images";
 import AddToCart from "@/components/shared/product/add-to-cart";
 import { getMyCart } from "@/lib/actions/cart.actions";
+import { auth } from "@/auth";
+import ReviewList from "./review-list";
+import Rating from "@/components/shared/product/rating";
 
 interface ProductDetailsPageProps {
   params: Promise<{ slug: string }>
@@ -18,6 +21,9 @@ const ProductDetailsPage = async ({ params }: ProductDetailsPageProps) => {
   if (!product) {
     return notFound();
   }
+
+  const session = await auth();
+  const userId = session?.user?.id;
 
   const cart = await getMyCart();
 
@@ -35,12 +41,13 @@ const ProductDetailsPage = async ({ params }: ProductDetailsPageProps) => {
               <p>
                 {product.brand} {product.category}
               </p>
-              <h1 className="h-3">
-                {product.name}
-              </h1>
-              <p>
-                {product.rating} of {product.numReviews} Reviews
-              </p>
+
+              <h1 className="h-3">{product.name}</h1>
+              
+              <Rating value={Number(product.rating)}  />
+
+              <p>{product.numReviews} reviews</p>
+
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 ">
                 <ProductPrice
                   value={Number(product.price)}
@@ -94,6 +101,15 @@ const ProductDetailsPage = async ({ params }: ProductDetailsPageProps) => {
             </Card>
           </div>
         </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="h2-bold">Customer Reviews</h2>
+        <ReviewList
+          productSlug={product.slug}
+          productId={product.id}
+          userId={userId || ''}
+        />
       </section>
     </>
   );

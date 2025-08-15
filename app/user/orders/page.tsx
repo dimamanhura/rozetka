@@ -40,21 +40,21 @@ const OrdersPage = async ({ searchParams }: OrdersPageProps) => {
                   {order.id}
                 </TableCell>
                 <TableCell>
-                  {order.createdAt.toString()}
+                  {order.createdAt.toDateString()}
                 </TableCell>
                 <TableCell>
                   ${order.totalPrice.toString()}
                 </TableCell>
                 <TableCell>
                   {order.isPaid && order.paidAt ? (
-                    order.paidAt.toString()
+                    order.paidAt.toDateString()
                   ) : (
                     'Not Paid'
                   )}
                 </TableCell>
                 <TableCell>
                   {order.isDelivered && order.deliveredAt ? (
-                    order.deliveredAt.toString()
+                    order.deliveredAt.toDateString()
                   ) : (
                     'Not Delivered'
                   )}

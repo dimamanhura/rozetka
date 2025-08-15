@@ -60,7 +60,7 @@ const AdminOrdersPage = async ({ searchParams }: AdminOrdersPageProps) => {
                   {order.id}
                 </TableCell>
                 <TableCell>
-                  {order.createdAt.toISOString()}
+                  {order.createdAt.toDateString()}
                 </TableCell>
                 <TableCell>
                   {order.user.name}
@@ -70,14 +70,14 @@ const AdminOrdersPage = async ({ searchParams }: AdminOrdersPageProps) => {
                 </TableCell>
                 <TableCell>
                   {order.isPaid && order.paidAt ? (
-                    order.paidAt.toISOString()
+                    order.paidAt.toDateString()
                   ) : (
                     'Not Paid'
                   )}
                 </TableCell>
                 <TableCell>
                   {order.isDelivered && order.deliveredAt ? (
-                    order.deliveredAt.toISOString()
+                    order.deliveredAt.toDateString()
                   ) : (
                     'Not Delivered'
                   )}
