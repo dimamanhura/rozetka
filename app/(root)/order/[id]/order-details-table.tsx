@@ -27,14 +27,17 @@ import {
   deliverOrder,
 } from "@/lib/actions/order.actions";
 import { toast } from "sonner";
+import StripePayment from "./stripe-payment";
 
 interface OrderDetailsTableProps {
+  stripeClientSecret?: string | null; 
   paypalClientId: string;
   isAdmin?: boolean;
   order: Order;
-}
+};
 
 const OrderDetailsTable = ({
+  stripeClientSecret,
   paypalClientId,
   isAdmin,
   order,
@@ -231,7 +234,7 @@ const OrderDetailsTable = ({
                 <div>${totalPrice}</div>
               </div>
 
-              {/* PayPal Payment  */}
+              {/* PayPal Payment */}
               {!isPaid && paymentMethod === 'PayPal' && (
                 <PayPalScriptProvider options={{ clientId: paypalClientId }}>
                   <PrintLoadingState />
@@ -242,10 +245,20 @@ const OrderDetailsTable = ({
                 </PayPalScriptProvider>
               )}
 
-              {/* Cash On Delivery  */}
+              {/* Stripe Payment  */}
+              {!isPaid && paymentMethod === 'Stripe' && stripeClientSecret && (
+                <StripePayment
+                  priceInCents={Math.round(Number(order.totalPrice) * 100)}
+                  orderId={order.id}
+                  clientSecret={stripeClientSecret}
+                />
+              )}
+
+              {/* Cash On Delivery */}
               {isAdmin && !isPaid && paymentMethod === 'CashOnDelivery' && (
                 <MarkAsPaidButton />
               )}
+
               {isAdmin && isPaid && !isDelivered && (
                 <MarkAsDeliveredButton />
               )}
